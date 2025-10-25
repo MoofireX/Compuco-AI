@@ -320,7 +320,7 @@ class AutomationsWindow(QtWidgets.QMainWindow):
         toolbar3.setMovable(False)
         toolbar3.setOrientation(Qt.Horizontal)
         menu_button3 = menu()
-        toolbar3.addWidget(menu_button2)
+        toolbar3.addWidget(menu_button3)
 
 
 
