@@ -1,13 +1,14 @@
 #compucoAI
 from PySide6 import QtCore, QtWidgets, QtGui
-from PySide6.QtCore import Qt, QThread
+from PySide6.QtCore import Qt, QThread, QProcess
 from PySide6.QtGui import QFont, QMovie
-from PySide6.QtWidgets import QWidget, QTextEdit, QApplication, QPlainTextEdit, QToolButton, QStyle, QInputDialog, QMessageBox, QPushButton, QHBoxLayout
+from PySide6.QtWidgets import QWidget, QTextEdit, QApplication, QPlainTextEdit, QToolButton, QStyle, QInputDialog, QMessageBox, QPushButton, QHBoxLayout, QVBoxLayout
 from google import genai
 from google.genai.types import GenerateContentConfig
 import subprocess
 import os
 import sys
+import io
 import shutil
 import platform
 import json
@@ -156,7 +157,7 @@ class ChatWindow(QtWidgets.QMainWindow):
 
         self.ai_response = self.client.models.generate_content(
             model="gemini-2.5-flash",
-            contents=[f"{self.chat_prompt}. Make an automation according to the user's request. If the request at the beginning is not a request for creating an automation, explain why to the user, but add the phrase '[Not code] ', as shown exactly as shown at the very beginning of the response. Follow these instructions exactly as stated. Your response should only be code with included comments that you want to add. Don't add any introductory or concluding statements. Return only the code and none of the thinking procedure. Choose either bash or Python, and add either [bash] or [python] at the start of your code. Add a newline after the header (either [bash] or [python]). Make the code suitable for this platform: {self.system}. If the user wants you to run the code, just respond, exactly as follows ([code] means the code you have provided), 'Running [code]'."])
+            contents=[f"{self.chat_prompt}. Make an automation according to the user's request. If the request at the beginning is not a request for creating an automation, explain why to the user, but add the phrase '[Not code] ', as shown exactly as shown at the very beginning of the response. Follow these instructions exactly as stated. Your response should only be code with included comments that you want to add. Don't add any introductory or concluding statements. Return only the code and none of the thinking procedure. Choose either bash, Powershell, or Python, and add either [bash], [powershell] or [python] at the start of your code. Add a newline after the header (either [bash] or [python]). Make the code suitable for this platform: {self.system}. If the user wants you to run the code, just respond, exactly as follows ([code] means the code you have provided), 'Running [code]'."])
         self.response = self.ai_response.text
 
         self.code_box.appendPlainText(f"\n--------------------------------\n{self.response}")
@@ -206,13 +207,15 @@ class menu(QtWidgets.QToolButton):
         self.home = MainWindow()
         self.home.resize(800,400)
         self.home.show()
-        self.close()
+        if self.parent():
+            self.parent().close()
 
     def go_to_automations(self):
         self.automations = AutomationsWindow()
         self.automations.resize(800,400)
         self.automations.show()
-        self.close()
+        if self.parent():
+            self.parent().close()
 
 class AutomationTiles(QWidget):
     def __init__(self, code, name):
@@ -231,10 +234,33 @@ class AutomationTiles(QWidget):
         self.run.clicked.connect(self.run_automation)
         self.add_to_startup = QPushButton("Add to Startup")
         self.add_to_startup.clicked.connect(self.add_automation_to_startup)
+        self.view = QPushButton("View")
+        self.view.clicked.connect(self.view_automation)
+        self.delete = QPushButton("Delete")
+        self.delete.clicked.connect(self.delete_automation(self.name))
         layout.addWidget(self.run)
         layout.addWidget(self.add_to_startup)
+        layout.addWidget(self.view)
+
+    def scroll_popup(self, title, message):
+        msg = QMessageBox()
+        msg.setWindowTitle(title)
+        msg.setIcon(QMessageBox.Information)
+
+        scroll = QTextEdit()
+        scroll.setReadOnly(True)
+        scroll.setPlainText(message)
+        scroll.setMinimumSize(400,200)
+
+        layout = msg.layout()
+        layout.addWidget(scroll, 0, 1)
+
+        msg.exec()
 
     def run_automation(self):
+        output = None
+        if self.system == "Windows":
+            QMessageBox.information(self, "Windows is not supported for running scripts directly.")
 
         if "[bash]" in self.code:
             try:
@@ -242,7 +268,7 @@ class AutomationTiles(QWidget):
                     self.code = self.code.replace("[bash]", "").replace("[python]", "").strip()
                     script.write(self.code)
                     try:
-                        subprocess.run(['bash', f"{self.name}.sh"], capture_output=True, text=True, check=True)
+                        output = subprocess.run(['bash', f"{self.name}.sh"], capture_output=True, text=True, check=True)
                     except subprocess.CalledProcessError as e:
                         QMessageBox.information(self, "Error", e)
             except Exception as e:
@@ -250,9 +276,19 @@ class AutomationTiles(QWidget):
         elif "[python]" in self.code:
             try:
                 self.code = self.code.replace("[bash]", "").replace("[python]", "").strip()
+
+                old_stdout = sys.stdout
+                sys.stdout = buffer = io.StringIO()
+
                 exec(self.code)
+
+                output = buffer.getvalue()
+                sys.stdout = old_stdout
+
             except Exception as e:
                 QMessageBox.information(self, "Error", e)
+
+        return output
 
     def add_automation_to_startup(self):
         self.key = os.environ.get("GOOGLE_API")
@@ -275,11 +311,12 @@ class AutomationTiles(QWidget):
                             QMessageBox.information(self, "Success", f"{self.name} added to startup!")
 
                         elif self.system == "Windows":
+                            startup_dir = os.path.join(os.environ["APPDATA"], r"Microsoft\Windows\Start Menu\Programs\Startup")
+                            bat_path = f"C:\\Users\\Username\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\Startup\\{self.name}-startup.bat"
                             with open(bat_path, "w") as f:
                                 self.code = self.code.replace("[bash]", "").replace("[python]", "").strip()
                                 f.write(self.code)
 
-                            startup_dir = os.path.join(os.environ["APPDATA"], r"Microsoft\Windows\Start Menu\Programs\Startup")
                             shutil.copy(f"{self.name}-startup.bat", startup_dir)
 
                             QMessageBox.information(self, "Success", f"{self.name} added to startup!")
@@ -292,6 +329,16 @@ class AutomationTiles(QWidget):
 
         except Exception as e:
             QMessageBox.information(self, "Error", str(e))
+
+    def view_automation(self):
+        self.scroll_popup("Automation Code", self.code)
+
+    def delete_automation(self, name):
+        connection = sqlite3.connect("automations.db")
+        c = connection.cursor()
+        c.execute("DELETE FROM automations WHERE name = ?", (name,))
+        connection.commit()
+        connection.close()
 
 class AutomationsWindow(QtWidgets.QMainWindow):
     def __init__(self):
@@ -312,6 +359,7 @@ class AutomationsWindow(QtWidgets.QMainWindow):
 
         for name, code in automations_list:
             tile = AutomationTiles(code, name)
+            tile.run.clicked.connect(lambda _, t=tile: self.display_output(t))
             layout.addWidget(tile)
 
         layout.addStretch()
@@ -322,6 +370,14 @@ class AutomationsWindow(QtWidgets.QMainWindow):
         menu_button3 = menu()
         toolbar3.addWidget(menu_button3)
 
+        self.output_box = QtWidgets.QPlainTextEdit()
+        self.output_box.setReadOnly(True)
+        self.output_box.setPlaceholderText("Output from the code will be displayed here... ")
+        layout.addWidget(self.output_box)
+
+    def display_output(self, tile):
+        output = tile.run_automation()
+        self.output_box.appendPlainText(f"\n--------------------------------\n{output}")
 
 
 if __name__ == "__main__":
@@ -372,20 +428,24 @@ if __name__ == "__main__":
     /* ===== Buttons ===== */
     QPushButton {
         background-color: rgba(255, 0, 255, 0.2);
-        color: #0D0D0D;
+        color: #00FFFF; /* Cyan text */
         border: 2px solid #00FFEA;
         border-radius: 14px;
         padding: 10px 20px;
         font-weight: bold;
         font-size: 16px;
+        text-shadow: 0 0 8px #00FFFF; /* Subtle neon glow */
+        transition: all 0.3s;
     }
 
     QPushButton:hover {
         background-color: rgba(0, 255, 234, 0.4);
-        color: #0D0D0D;
+        color: #00FFFF; /* Keep cyan glow on hover */
         border: 2px solid #FF00FF;
         transform: scale(1.05);
+        text-shadow: 0 0 15px #00FFFF, 0 0 25px #00FFFF;
     }
+
 
     /* ===== Tool Buttons ===== */
     QToolButton {
