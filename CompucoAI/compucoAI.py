@@ -502,6 +502,7 @@ class SettingsWindow(QtWidgets.QMainWindow):
 
 if __name__ == "__main__":
     app = QtWidgets.QApplication(sys.argv)
+    app.model = "gemini-2.0-flash"
     app.setStyleSheet("""
     /* ===== Global Window & Widgets ===== */
     QWidget {
