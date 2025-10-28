@@ -95,6 +95,7 @@ class AIWorker(QThread):
     def __init__(self, prompt, system, key):
         super().__init__()
         self.prompt = prompt
+        prompt_global = QApplication.instance().prompt
         self.system = system
         self.key = key
 
@@ -151,7 +152,6 @@ class ChatWindow(QtWidgets.QMainWindow):
     @QtCore.Slot()
     def ai_chat(self):
         self.system = platform.system()
-        global model
         try:
             key = os.environ.get("GOOGLE_API")
             self.client = genai.Client(api_key=key)
@@ -162,7 +162,7 @@ class ChatWindow(QtWidgets.QMainWindow):
 
         self.ai_response = self.client.models.generate_content(
             model=QApplication.instance().model,
-            contents=[f"{self.chat_prompt}. Make an automation according to the user's request. If the request at the beginning is not a request for creating an automation, explain why to the user, but add the phrase '[Not code] ', as shown exactly as shown at the very beginning of the response. Follow these instructions exactly as stated. Your response should only be code with included comments that you want to add. Don't add any introductory or concluding statements. Return only the code and none of the thinking procedure. Choose either bash, Powershell, or Python, and add either [bash], [powershell] or [python] at the start of your code. Add a newline after the header (either [bash] or [python]). Make the code suitable for this platform: {self.system}. If the user wants you to run the code, just respond, exactly as follows ([code] means the code you have provided), 'Running [code]'."])
+            contents=[f"{self.chat_prompt}. Make an automation according to the user's request. If the request at the beginning is not a request for creating an automation, explain why to the user, but add the phrase '[Not code] ', as shown exactly as shown at the very beginning of the response. Follow these instructions exactly as stated. Your response should only be code with included comments that you want to add. Don't add any introductory or concluding statements. Return only the code and none of the thinking procedure. Choose either bash, Powershell, or Python, and add either [bash], [powershell] or [python] at the start of your code. Add a newline after the header (either [bash] or [python]). Make the code suitable for this platform: {self.system}. If the user wants you to run the code, just respond, exactly as follows ([code] means the code you have provided), 'Running [code]'. Get context from the previous response: {self.response} and prompt: {prompt_global}."])
         self.response = self.ai_response.text
 
         self.code_box.appendPlainText(f"\n--------------------------------\n{self.response}")
