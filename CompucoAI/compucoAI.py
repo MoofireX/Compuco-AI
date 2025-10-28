@@ -303,7 +303,7 @@ class AutomationTiles(QWidget):
                     output = result.stdout.strip() if result.stdout else result.stderr.strip()
 
             except Exception as e:
-                QMessageBox.information(self, "Error", e)
+                output = f"An error occured: {e}"
 
         elif "[python]" in self.code:
             try:
@@ -318,7 +318,7 @@ class AutomationTiles(QWidget):
                 sys.stdout = old_stdout
 
             except Exception as e:
-                QMessageBox.information(self, "Error", e)
+                output = f"An error occured: {e}"
 
         return output
 
