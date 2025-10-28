@@ -10,7 +10,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Python-3.1%2B-blue.svg" alt="Python 3.1+">
+  <img src="https://img.shields.io/badge/Python-3.12%2B-blue.svg" alt="Python 3.1+">
   <img src="https://img.shields.io/badge/Platform-Linux%20%7C%20Windows-orange.svg" alt="Platform: Linux | Windows">
   <img src="https://img.shields.io/badge/License-GPLv3-blue.svg" alt="License: GPLv3">
 </p>
