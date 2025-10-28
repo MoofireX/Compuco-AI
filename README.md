@@ -33,11 +33,11 @@
 
 | Main Window | Chat Window |
 | :---: | :---: |
-| ![Main Window](main_window_screenshot.png) | ![Chat Window](chat_window_screenshot.png) |
+| ![Main Window](Screenshots/main_window_screenshot.png) | ![Chat Window](Screenshots/chat_window_screenshot.png) |
 
 | Saved Automations | Settings |
 | :---: | :---: |
-| ![Saved Automations](saved_automations_screenshot.png) | ![Settings](settings_window_screenshot.png) |
+| ![Saved Automations](Screenshots/saved_automations_screenshot.png) | ![Settings](Screenshots/settings_window_screenshot.png) |
 
 ## 🛠️ Tech Stack
 
