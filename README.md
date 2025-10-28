@@ -18,7 +18,7 @@
 ---
 
 ### 🪲 Bugs (‼️: Major, ❗: Minor)
- - **‼️ Ouput doesn't show, so no evidence that "Run" button works.**
+ - **‼️ Ouput doesn't show, so no evidence that running automation in-app works.**
 
 ## ✨ Features
 
