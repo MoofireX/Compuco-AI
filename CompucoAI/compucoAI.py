@@ -2,7 +2,7 @@
 from PySide6 import QtCore, QtWidgets, QtGui
 from PySide6.QtCore import Qt, QThread, QProcess
 from PySide6.QtGui import QFont, QMovie
-from PySide6.QtWidgets import QWidget, QTextEdit, QApplication, QPlainTextEdit, QToolButton, QStyle, QInputDialog, QMessageBox, QPushButton, QHBoxLayout, QVBoxLayout
+from PySide6.QtWidgets import QWidget, QTextEdit, QApplication, QPlainTextEdit, QToolButton, QStyle, QInputDialog, QMessageBox, QPushButton, QHBoxLayout, QVBoxLayout, QComboBox
 from google import genai
 from google.genai.types import GenerateContentConfig
 import subprocess
@@ -45,7 +45,7 @@ class MainWindow(QtWidgets.QMainWindow):
         toolbar = self.addToolBar("MainWindow")
         toolbar.setMovable(False)
         toolbar.setOrientation(Qt.Horizontal)
-        menu_button = menu()
+        menu_button = menu(self)
         toolbar.addWidget(menu_button)
 
         self.button.clicked.connect(self.ai_initial)
@@ -57,7 +57,7 @@ class MainWindow(QtWidgets.QMainWindow):
             key = os.environ.get("GOOGLE_API")
             self.prompt = self.prompt_box.toPlainText()
         except ValueError:
-            print("API key not found. Please export your Google GenAI API key to 'GOOGLE_API'.")
+            print("API key not found. Please export your Google GenAI API key to 'GOOGLE_API' or set it in Settings.")
             sys.exit(1)
 
         self.hide()
@@ -99,9 +99,13 @@ class AIWorker(QThread):
         self.key = key
 
     def run(self):
-        client = genai.Client(api_key=self.key)
+        try:
+            client = genai.Client(api_key=self.key)
+        except AttributeError as E:
+            print("API key not found. Please export your Google GenAI API key to 'GOOGLE_API' or set it in Settings.")
+            sys.exit(1)
         ai_response = client.models.generate_content(
-            model="gemini-2.5-flash",
+            model=QApplication.instance().model,
             contents=[f"{self.prompt}. Make an automation according to the user's request. If the request at the beginning is not a request for creating an automation, explain why to the user, but add the phrase '[Not code]', as shown exactly as shown at the very beginning of the response. Follow these instructions exactly as stated. Your response should only be code with included comments that you want to add. Don't add any introductory or concluding statements or anything other than code. Choose the most optimal programming language for the request. Make the code suitable for this platform: {self.system}."])
         response = ai_response.text
 
@@ -138,7 +142,7 @@ class ChatWindow(QtWidgets.QMainWindow):
         toolbar2 = self.addToolBar("ChatWindow")
         toolbar2.setMovable(False)
         toolbar2.setOrientation(Qt.Horizontal)
-        menu_button2 = menu()
+        menu_button2 = menu(self)
         toolbar2.addWidget(menu_button2)
 
         self.button.clicked.connect(self.ai_chat)
@@ -147,16 +151,17 @@ class ChatWindow(QtWidgets.QMainWindow):
     @QtCore.Slot()
     def ai_chat(self):
         self.system = platform.system()
+        global model
         try:
             key = os.environ.get("GOOGLE_API")
             self.client = genai.Client(api_key=key)
             self.chat_prompt = self.chat_box.toPlainText()
         except ValueError:
-            print("API key not found. Please export your Google GenAI API key to 'GOOGLE_API' as an environment variable.")
+            print("API key not found. Please export your Google GenAI API key to 'GOOGLE_API' as an environment variable or set it in Settings.")
             sys.exit(1)
 
         self.ai_response = self.client.models.generate_content(
-            model="gemini-2.5-flash",
+            model=QApplication.instance().model,
             contents=[f"{self.chat_prompt}. Make an automation according to the user's request. If the request at the beginning is not a request for creating an automation, explain why to the user, but add the phrase '[Not code] ', as shown exactly as shown at the very beginning of the response. Follow these instructions exactly as stated. Your response should only be code with included comments that you want to add. Don't add any introductory or concluding statements. Return only the code and none of the thinking procedure. Choose either bash, Powershell, or Python, and add either [bash], [powershell] or [python] at the start of your code. Add a newline after the header (either [bash] or [python]). Make the code suitable for this platform: {self.system}. If the user wants you to run the code, just respond, exactly as follows ([code] means the code you have provided), 'Running [code]'."])
         self.response = self.ai_response.text
 
@@ -184,8 +189,10 @@ class ChatWindow(QtWidgets.QMainWindow):
         QMessageBox.information(self, "Saved", f"Automation '{name}' saved successfully!")
 
 class menu(QtWidgets.QToolButton):
-    def __init__(self):
+    def __init__(self, main_window):
         super().__init__()
+        self.main_window = main_window
+
         style = self.style()
         icon = self.style().standardIcon(QStyle.StandardPixmap.SP_ToolBarVerticalExtensionButton)
         self.setIcon(icon)
@@ -194,12 +201,14 @@ class menu(QtWidgets.QToolButton):
 
         menu = QtWidgets.QMenu(self)
         home = menu.addAction("Home")
+        chat = menu.addAction("Chat")
         automations = menu.addAction("Saved Automations")
         settings = menu.addAction("Settings")
 
         home.triggered.connect(self.go_home)
         automations.triggered.connect(self.go_to_automations)
-        #settings.triggered.connect(self.go_to_settings)
+        chat.triggered.connect(self.go_to_chat)
+        settings.triggered.connect(self.go_to_settings)
 
         self.setMenu(menu)
 
@@ -207,15 +216,28 @@ class menu(QtWidgets.QToolButton):
         self.home = MainWindow()
         self.home.resize(800,400)
         self.home.show()
-        if self.parent():
-            self.parent().close()
+        self.main_window.close()
 
     def go_to_automations(self):
         self.automations = AutomationsWindow()
         self.automations.resize(800,400)
         self.automations.show()
-        if self.parent():
-            self.parent().close()
+        self.main_window.close()
+
+    def go_to_chat(self):
+        try:
+            self.chat = ChatWindow(ChatWindow.response)
+            self.chat.resize(800,400)
+            self.chat.show()
+            self.main_window.close()
+        except AttributeError as e:
+            QMessageBox.information(self, "Error", "Please speak to AI before opening a chat window")
+
+    def go_to_settings(self):
+        self.settings = SettingsWindow()
+        self.settings.resize(800,400)
+        self.settings.show()
+        self.main_window.close()
 
 class AutomationTiles(QWidget):
     def __init__(self, code, name):
@@ -232,15 +254,24 @@ class AutomationTiles(QWidget):
 
         self.run = QPushButton("Run")
         self.run.clicked.connect(self.run_automation)
+
         self.add_to_startup = QPushButton("Add to Startup")
         self.add_to_startup.clicked.connect(self.add_automation_to_startup)
+
         self.view = QPushButton("View")
         self.view.clicked.connect(self.view_automation)
+
         self.delete = QPushButton("Delete")
-        self.delete.clicked.connect(self.delete_automation(self.name))
+        self.delete.clicked.connect(lambda: self.delete_automation(self.name))
+
+        self.edit = QPushButton("Edit")
+        self.edit.clicked.connect(lambda: self.edit_automation(self.name))
+
         layout.addWidget(self.run)
         layout.addWidget(self.add_to_startup)
         layout.addWidget(self.view)
+        layout.addWidget(self.edit)
+        layout.addWidget(self.delete)
 
     def scroll_popup(self, title, message):
         msg = QMessageBox()
@@ -258,24 +289,25 @@ class AutomationTiles(QWidget):
         msg.exec()
 
     def run_automation(self):
-        output = None
+        output = ""
         if self.system == "Windows":
             QMessageBox.information(self, "Windows is not supported for running scripts directly.")
 
         if "[bash]" in self.code:
             try:
                 with open(f"{self.name}.sh", "w") as script:
-                    self.code = self.code.replace("[bash]", "").replace("[python]", "").strip()
+                    self.code = self.code.replace("[bash]", "").replace("[python]", "").replace("[''']", "").replace("[''']", "").strip()
                     script.write(self.code)
-                    try:
-                        output = subprocess.run(['bash', f"{self.name}.sh"], capture_output=True, text=True, check=True)
-                    except subprocess.CalledProcessError as e:
-                        QMessageBox.information(self, "Error", e)
+
+                    result = subprocess.run(['bash', f"{self.name}.sh"], capture_output=True, text=True, check=True)
+                    output = result.stdout.strip() if result.stdout else result.stderr.strip()
+
             except Exception as e:
                 QMessageBox.information(self, "Error", e)
+
         elif "[python]" in self.code:
             try:
-                self.code = self.code.replace("[bash]", "").replace("[python]", "").strip()
+                self.code = self.code.replace("[bash]", "").replace("[python]", "").replace("[''']", "").replace('["""]', "").strip()
 
                 old_stdout = sys.stdout
                 sys.stdout = buffer = io.StringIO()
@@ -298,7 +330,7 @@ class AutomationTiles(QWidget):
 
         try:
                 with open(f"{self.name}-startup.sh", "w") as script:
-                    self.code = self.code.replace("[bash]", "").replace("[python]", "").strip()
+                    self.code = self.code.replace("[bash]", "").replace("[python]", "").replace("[''']", "").replace("[''']", "").strip()
                     script.write(self.code)
                     try:
 
@@ -314,7 +346,7 @@ class AutomationTiles(QWidget):
                             startup_dir = os.path.join(os.environ["APPDATA"], r"Microsoft\Windows\Start Menu\Programs\Startup")
                             bat_path = f"C:\\Users\\Username\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\Startup\\{self.name}-startup.bat"
                             with open(bat_path, "w") as f:
-                                self.code = self.code.replace("[bash]", "").replace("[python]", "").strip()
+                                self.code = self.code.replace("[bash]", "").replace("[python]", "").replace("[''']", "").replace("[''']", "").strip()
                                 f.write(self.code)
 
                             shutil.copy(f"{self.name}-startup.bat", startup_dir)
@@ -340,16 +372,53 @@ class AutomationTiles(QWidget):
         connection.commit()
         connection.close()
 
+        self.setParent(None)
+
+    def edit_automation(self, name):
+        self.popup = QtWidgets.QWidget()
+        self.popup.setWindowTitle(f"Editing Automation: {name}")
+        self.popup.setWindowModality(Qt.ApplicationModal)
+        self.popup.setAttribute(Qt.WA_DeleteOnClose)
+        layout = QVBoxLayout(self.popup)
+
+        editor = QTextEdit()
+        editor.setPlainText(self.code)
+        layout.addWidget(editor)
+
+        save_button = QPushButton("Save")
+        layout.addWidget(save_button)
+
+        def save_edits():
+            self.new_code = editor.toPlainText()
+
+            connection = sqlite3.connect("automations.db")
+            c = connection.cursor()
+            c.execute("UPDATE automations SET code = ? WHERE name = ?", (self.new_code, name))
+            connection.commit()
+            connection.close()
+
+            self.code = self.new_code
+            QMessageBox.information(self.popup, "Saved", f"Automation {name} updated")
+            self.popup.close()
+
+        save_button.clicked.connect(save_edits)
+
+        self.popup.resize(400,200)
+        self.popup.show()
+
 class AutomationsWindow(QtWidgets.QMainWindow):
     def __init__(self):
         super().__init__()
 
         self.setWindowTitle("Saved Automations")
+        self.text = QtWidgets.QLabel("Saved Automations",
+                    alignment=QtCore.Qt.AlignCenter)
 
         central = QtWidgets.QWidget()
         self.setCentralWidget(central)
         layout = QtWidgets.QVBoxLayout()
         central.setLayout(layout)
+        layout.addWidget(self.text)
 
         connection = sqlite3.connect("automations.db")
         c = connection.cursor()
@@ -367,7 +436,7 @@ class AutomationsWindow(QtWidgets.QMainWindow):
         toolbar3 = self.addToolBar("ChatWindow")
         toolbar3.setMovable(False)
         toolbar3.setOrientation(Qt.Horizontal)
-        menu_button3 = menu()
+        menu_button3 = menu(self)
         toolbar3.addWidget(menu_button3)
 
         self.output_box = QtWidgets.QPlainTextEdit()
@@ -378,6 +447,57 @@ class AutomationsWindow(QtWidgets.QMainWindow):
     def display_output(self, tile):
         output = tile.run_automation()
         self.output_box.appendPlainText(f"\n--------------------------------\n{output}")
+
+class SettingsWindow(QtWidgets.QMainWindow):
+    def __init__(self):
+        super().__init__()
+
+        self.setWindowTitle("Settings")
+        self.text = QtWidgets.QLabel("Settings",
+                    alignment=QtCore.Qt.AlignCenter)
+
+
+        central = QtWidgets.QWidget()
+        self.setCentralWidget(central)
+        layout = QtWidgets.QVBoxLayout()
+        layout_for_settings = QtWidgets.QHBoxLayout()
+        central.setLayout(layout)
+
+        layout.addWidget(self.text)
+
+        self.API_box = QtWidgets.QLineEdit()
+        if os.environ.get("GOOGLE_API") is None:
+            self.API_box.setPlaceholderText("Enter your Google GenAI API Key here ")
+        else:
+            self.API_box.setPlaceholderText(f"Current API Key: {os.environ.get('GOOGLE_API')}")
+        layout_for_settings.addWidget(self.API_box)
+
+        self.set_button = QPushButton("Set")
+        self.set_button.clicked.connect(self.set_API_key)
+        layout_for_settings.addWidget(self.set_button)
+
+        self.model_box = QComboBox()
+        self.model_box.addItem("gemini-2.0-flash")
+        self.model_box.addItem("gemini-2.5-flash")
+        self.model_box.addItem("gemini-2.5-pro")
+        self.model_box.currentIndexChanged.connect(self.model_change)
+        layout_for_settings.addWidget(self.model_box)
+
+
+        toolbar4 = self.addToolBar("SettingsWindow")
+        toolbar4.setMovable(False)
+        toolbar4.setOrientation(Qt.Horizontal)
+        menu_button4 = menu(self)
+        toolbar4.addWidget(menu_button4)
+
+        layout.addLayout(layout_for_settings)
+
+    def set_API_key(self):
+        os.environ["GOOGLE_API"] = f"{self.API_box.text()}"
+        QMessageBox.information(self, "Updated", "GOOGLE_API Key updated!")
+
+    def model_change(self):
+        app.model = self.model_box.currentText()
 
 
 if __name__ == "__main__":
