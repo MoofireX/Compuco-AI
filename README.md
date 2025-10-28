@@ -17,6 +17,9 @@
 
 ---
 
+### 🪲 Bugs (‼️: Major, ❗: Minor)
+ - **‼️ Ouput doesn't show, so no evidence that "Run" button works.
+
 ## ✨ Features
 
 - **🤖 AI-Powered Automation**: Describe what you want to do in plain English, and let the AI generate the necessary script.
