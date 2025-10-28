@@ -10,9 +10,9 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Python-3.x-blue.svg" alt="Python 3.x">
+  <img src="https://img.shields.io/badge/Python-3.1%2B-blue.svg" alt="Python 3.1+">
   <img src="https://img.shields.io/badge/Platform-Linux%20%7C%20Windows-orange.svg" alt="Platform: Linux | Windows">
-  <img src="https://img.shields.io/badge/License-MIT-green.svg" alt="License: MIT">
+  <img src="https://img.shields.io/badge/License-GPLv3-blue.svg" alt="License: GPLv3">
 </p>
 
 ---
@@ -33,13 +33,11 @@
 
 | Main Window | Chat Window |
 | :---: | :---: |
-| ![Main Window](https://i.imgur.com/your-main-window-image.png) | ![Chat Window](https://i.imgur.com/your-chat-window-image.png) |
+| ![Main Window](main_window_screenshot.png) | ![Chat Window](chat_window_screenshot.png) |
 
 | Saved Automations | Settings |
 | :---: | :---: |
-| ![Saved Automations](https://i.imgur.com/your-automations-image.png) | ![Settings](https://i.imgur.com/your-settings-image.png) |
-
-*(Note: These are placeholder images. Replace with actual screenshots of the application.)*
+| ![Saved Automations](saved_automations_screenshot.png) | ![Settings](settings_window_screenshot.png) |
 
 ## 🛠️ Tech Stack
 
@@ -54,7 +52,7 @@ Follow these instructions to get a copy of the project up and running on your lo
 
 ### Prerequisites
 
-- Python 3.8+
+- Python 3.1+
 - An API key from **[Google AI Studio](https://aistudio.google.com/app/apikey)**.
 
 ### Installation
