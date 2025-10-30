@@ -55,7 +55,7 @@ Follow these instructions to get a copy of the project up and running on your lo
 
 ### Prerequisites
 
-- Python 3.1+
+- Python 3.12+
 - An API key from **[Google AI Studio](https://aistudio.google.com/app/apikey)**.
 
 ### Installation
