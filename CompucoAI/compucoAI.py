@@ -289,8 +289,7 @@ class AutomationTiles(QWidget):
                     self.code = self.code.replace("[bash]", "").replace("[python]", "").replace("[''']", "").replace("[''']", "").strip()
                     script.write(self.code)
 
-                    result = subprocess.run(['bash', f"{self.name}.sh"], capture_output=True, text=True, check=True)
-                    output = result.stdout.strip() if result.stdout else result.stderr.strip()
+                    output = subprocess.getoutput(['bash', f"{self.name}.sh"], capture_output=True, text=True, check=True)
 
             except Exception as e:
                 output = f"An error occured: {e}"
